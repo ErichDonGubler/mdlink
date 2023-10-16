@@ -1,8 +1,14 @@
 [package]
 name = "mdlink"
+authors = ["Erich Gubler <erichdongubler@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/ErichDonGubler/mdlink"
+
+[package.metadata.wix]
+upgrade-guid = "4BAD2368-4ED6-483A-AE26-1120345654C0"
+path-guid = "51E0F7DA-62A6-43CA-9F0E-A3C6F212B00F"
 
 [dependencies]
 arboard = { version = "3.2.1", default-features = false }
@@ -14,3 +20,16 @@ joinery = "3.1.0"
 log = "0.4.20"
 regex = "1.10.2"
 url = "2.4.1"
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+# Config for 'cargo dist'
+[workspace.metadata.dist]
+cargo-dist-version = "0.3.1"
+ci = ["github"]
+installers = ["shell", "powershell", "msi"]
+targets = ["x86_64-unknown-linux-gnu", "aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-pc-windows-msvc"]
+pr-run-mode = "plan"

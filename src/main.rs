@@ -1,12 +1,14 @@
 use std::{
     fmt::{self, Display},
     io::{self, stdin},
+    sync::OnceLock,
 };
 
 use arboard::Clipboard;
 use clap::Parser;
 use format::lazy_format;
 use itertools::Itertools;
+use joinery::JoinableIterator;
 use url::Url;
 
 #[derive(Debug, Parser)]
@@ -104,6 +106,63 @@ fn try_write_markdown_url(
                                 render_bugzilla(url, bug_id.as_ref(), f)?;
                                 return Ok(FancyMarkdownMatched::Yes);
                             }
+                        }
+                    }
+                }
+                "docs.rs" => {
+                    if let Some((crate_name, ver, crate_name2)) = path_segments.next_tuple() {
+                        if crate_name == crate_name2 {
+                            log::debug!("ignoring version {ver:?}");
+
+                            let symbol_caps;
+                            let symbol = match path_segments.next_back() {
+                                Some("index.html") => None,
+                                Some(symbol) => {
+                                    static SYMBOL_RE: OnceLock<regex::Regex> = OnceLock::new();
+                                    let symbol_re = SYMBOL_RE.get_or_init(|| {
+                                        regex::Regex::new(concat!(
+                                            "(constant|struct|fn|enum|trait|attr)",
+                                            r"\.",
+                                            r"(?P<ident>\w+)",
+                                            r"\.html"
+                                        ))
+                                        .unwrap()
+                                    });
+                                    symbol_caps = symbol_re.captures(symbol);
+                                    match symbol_caps.as_ref().map(|caps| &caps["ident"]) {
+                                        None => return Ok(FancyMarkdownMatched::No),
+                                        ident => ident,
+                                    }
+                                }
+                                None => return Ok(FancyMarkdownMatched::No),
+                            };
+
+                            let fragment_caps;
+                            let fragment = match url.fragment() {
+                                None => None,
+                                Some(fragment) => {
+                                    static FRAGMENT_CAPS: OnceLock<regex::Regex> = OnceLock::new();
+                                    let fragment_re = FRAGMENT_CAPS.get_or_init(|| {
+                                        regex::Regex::new(concat!(
+                                            "(tymethod|method)",
+                                            r"\.",
+                                            r"(?P<ident>\w+)",
+                                        ))
+                                        .unwrap()
+                                    });
+                                    fragment_caps = fragment_re.captures(fragment);
+                                    fragment_caps.as_ref().map(|caps| &caps["ident"])
+                                }
+                            };
+
+                            let module_path = Some(crate_name)
+                                .into_iter()
+                                .chain(path_segments)
+                                .chain(symbol)
+                                .chain(fragment)
+                                .join_with("::");
+                            write!(f, "[`{module_path}`]({url})")?;
+                            return Ok(FancyMarkdownMatched::Yes);
                         }
                     }
                 }

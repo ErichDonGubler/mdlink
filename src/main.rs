@@ -1,5 +1,5 @@
 use std::{
-    fmt,
+    fmt::{self, Display},
     io::{self, stdin},
 };
 
@@ -77,7 +77,6 @@ fn try_write_markdown_url(
             let mut path_segments = url
                 .path_segments()
                 .expect("got URL with host but no path segments (!?)");
-            #[allow(clippy::single_match)]
             match host {
                 "github.com" => {
                     if let Some((org, repo)) = path_segments.next_tuple() {
@@ -89,10 +88,48 @@ fn try_write_markdown_url(
                         }
                     }
                 }
+                "bugzil.la" => {
+                    if let Some((bug_id,)) = path_segments.collect_tuple() {
+                        render_bugzilla(url, bug_id, f)?;
+                        return Ok(FancyMarkdownMatched::Yes);
+                    }
+                }
+                "bugzilla.mozilla.org" => {
+                    if let Some("show_bug.cgi") = path_segments.next() {
+                        if path_segments.next().is_none() {
+                            if let Some(bug_id) = url
+                                .query_pairs()
+                                .find_map(|(k, v)| (k == "id").then_some(v))
+                            {
+                                render_bugzilla(url, bug_id.as_ref(), f)?;
+                                return Ok(FancyMarkdownMatched::Yes);
+                            }
+                        }
+                    }
+                }
                 _ => (),
             }
         }
     }
 
     Ok(FancyMarkdownMatched::No)
+}
+
+fn render_bugzilla(url: &Url, bug_id: &str, mut f: impl fmt::Write) -> fmt::Result {
+    let (prefix, postfix) = if bug_id.chars().all(|c| c.is_ascii_digit()) {
+        ("bug ", "")
+    } else {
+        ("`", "`")
+    };
+
+    let comment;
+    let mut comment_display: &dyn Display = &"";
+
+    if let Some(fragment) = url.fragment() {
+        if let Some(("", comment_id)) = fragment.split_once('c') {
+            comment = lazy_format!(move |f| write!(f, ", comment {comment_id}"));
+            comment_display = &comment;
+        }
+    }
+    write!(f, "[{prefix}{bug_id}{postfix}{comment_display}]({url})")
 }

@@ -103,7 +103,7 @@ fn try_write_markdown_url(
                                     let line_num_spec_re = LINE_NUM_SPEC_RE.get_or_init(|| {
                                         regex::Regex::new(concat!(
                                             r#"L(?P<start>\d+)"#,
-                                            r#"(:?-L(?P<end>\d+}))?"#,
+                                            r#"(:?-L(?P<end>\d+))?"#,
                                         ))
                                         .unwrap()
                                     });

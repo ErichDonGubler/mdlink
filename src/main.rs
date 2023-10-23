@@ -88,6 +88,57 @@ fn try_write_markdown_url(
                             write!(f, "[`{org}/{repo}`#{issue_num}]({url})")?;
                             return Ok(FancyMarkdownMatched::Yes);
                         }
+
+                        {
+                            let mut path_segments = path_segments.clone();
+                            if let Some(("blob", commitish)) = path_segments.next_tuple() {
+                                enum LineNumberSpec<'a> {
+                                    Single(&'a str),
+                                    Range { start: &'a str, end: &'a str },
+                                }
+                                let file_path_segments = path_segments;
+                                let line_num_spec = url.fragment().and_then(|frag| {
+                                    static LINE_NUM_SPEC_RE: OnceLock<regex::Regex> =
+                                        OnceLock::new();
+                                    let line_num_spec_re = LINE_NUM_SPEC_RE.get_or_init(|| {
+                                        regex::Regex::new(concat!(
+                                            r#"L(?P<start>\d+)"#,
+                                            r#"(:?-L(?P<end>\d+}))?"#,
+                                        ))
+                                        .unwrap()
+                                    });
+                                    line_num_spec_re.captures(frag).map(|caps| {
+                                        let start =
+                                            caps.name("start").map(|m| m.as_str()).expect(concat!(
+                                                "matched line number spec. regex, ",
+                                                "but unconditional `start` capture not found"
+                                            ));
+
+                                        caps.name("end")
+                                            .map(|m| m.as_str())
+                                            .map(|end| LineNumberSpec::Range { start, end })
+                                            .unwrap_or(LineNumberSpec::Single(start))
+                                    })
+                                });
+                                write!(
+                                    f,
+                                    "[`{org}/{repo}`:`{commitish}`:`{}`{}]({url})",
+                                    file_path_segments.join_with('/'),
+                                    lazy_format!(|f| {
+                                        match line_num_spec {
+                                            Some(LineNumberSpec::Single(num)) => {
+                                                write!(f, ":{num}")
+                                            }
+                                            Some(LineNumberSpec::Range { start, end }) => {
+                                                write!(f, ":{start}-{end}")
+                                            }
+                                            None => Ok(()),
+                                        }
+                                    })
+                                )?;
+                                return Ok(FancyMarkdownMatched::Yes);
+                            }
+                        }
                     }
                 }
                 "bugzil.la" => {

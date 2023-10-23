@@ -78,7 +78,7 @@ fn try_write_markdown_url(
         if let Some(host) = url.host_str() {
             let mut path_segments = url
                 .path_segments()
-                .expect("got URL with host but no path segments (!?)");
+                .expect("got URL with host but no path segments iterator (!?)");
             match host {
                 "github.com" => {
                     if let Some((org, repo)) = path_segments.next_tuple() {

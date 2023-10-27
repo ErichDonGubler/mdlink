@@ -160,6 +160,17 @@ fn try_write_markdown_url(
                         }
                     }
                 }
+                "phabricator.services.mozilla.com" => {
+                    if let Some((id,)) = path_segments.collect_tuple() {
+                        if id
+                            .strip_prefix("D")
+                            .map_or(false, |rest| rest.chars().all(|c| c.is_ascii_digit()))
+                        {
+                            write!(f, "[{id}]({url})")?;
+                            return Ok(FancyMarkdownMatched::Yes);
+                        }
+                    }
+                }
                 "docs.rs" => {
                     if let Some((crate_name, ver, crate_name2)) = path_segments.next_tuple() {
                         if crate_name == crate_name2 {

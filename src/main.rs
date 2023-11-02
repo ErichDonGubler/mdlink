@@ -228,6 +228,26 @@ fn try_write_markdown_url(
                         }
                     }
                 }
+                "treeherder.mozilla.org" => {
+                    if let Some(("jobs",)) = path_segments.collect_tuple() {
+                        let mut repo = None;
+                        let mut revision = None;
+                        let mut query_pairs = url.query_pairs();
+                        while let Some((key, value)) = query_pairs.next() {
+                            match key.as_ref() {
+                                "repo" => repo = repo.or(Some(value)),
+                                "revision" => revision = revision.or(Some(value)),
+                                _ => (),
+                            }
+                        }
+
+                        if let (Some(repo), Some(revision)) = (repo, revision) {
+                            let revision = revision.get(..12).unwrap_or(revision.as_ref());
+                            write!(f, "[`{repo}:{revision}`]({url})")?;
+                            return Ok(FancyMarkdownMatched::Yes);
+                        }
+                    }
+                }
                 _ => (),
             }
         }

@@ -172,8 +172,10 @@ fn try_write_markdown_url(
                     }
                 }
                 "docs.rs" => {
-                    if let Some((crate_name, ver, crate_name2)) = path_segments.next_tuple() {
-                        if crate_name == crate_name2 {
+                    if let Some((crate_pkg_name, ver, crate_module_name)) =
+                        path_segments.next_tuple()
+                    {
+                        if &crate_pkg_name.replace('-', "_") == crate_module_name {
                             log::debug!("ignoring version {ver:?}");
 
                             let symbol_caps;
@@ -217,7 +219,7 @@ fn try_write_markdown_url(
                                 }
                             };
 
-                            let module_path = Some(crate_name)
+                            let module_path = Some(crate_module_name)
                                 .into_iter()
                                 .chain(path_segments)
                                 .chain(symbol)

@@ -175,7 +175,7 @@ fn try_write_markdown_url(
                     if let Some((crate_pkg_name, ver, crate_module_name)) =
                         path_segments.next_tuple()
                     {
-                        if &crate_pkg_name.replace('-', "_") == crate_module_name {
+                        if crate_pkg_name.replace('-', "_") == crate_module_name {
                             log::debug!("ignoring version {ver:?}");
 
                             let symbol_caps;

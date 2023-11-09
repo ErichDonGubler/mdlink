@@ -180,7 +180,7 @@ fn try_write_markdown_url(
 
                             let symbol_caps;
                             let symbol = match path_segments.next_back() {
-                                Some("index.html") => None,
+                                Some("index.html" | "") => None,
                                 Some(symbol) => {
                                     static SYMBOL_RE: OnceLock<regex::Regex> = OnceLock::new();
                                     let symbol_re = SYMBOL_RE.get_or_init(|| {

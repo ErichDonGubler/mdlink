@@ -233,8 +233,7 @@ fn try_write_markdown_url(
                     if let Some(("jobs",)) = path_segments.collect_tuple() {
                         let mut repo = None;
                         let mut revision = None;
-                        let mut query_pairs = url.query_pairs();
-                        while let Some((key, value)) = query_pairs.next() {
+                        for (key, value) in url.query_pairs() {
                             match key.as_ref() {
                                 "repo" => repo = repo.or(Some(value)),
                                 "revision" => revision = revision.or(Some(value)),

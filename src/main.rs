@@ -163,7 +163,7 @@ fn try_write_markdown_url(
                 "phabricator.services.mozilla.com" => {
                     if let Some((id,)) = path_segments.collect_tuple() {
                         if id
-                            .strip_prefix("D")
+                            .strip_prefix('D')
                             .map_or(false, |rest| rest.chars().all(|c| c.is_ascii_digit()))
                         {
                             write!(f, "[{id}]({url})")?;

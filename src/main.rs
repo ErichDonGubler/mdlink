@@ -229,6 +229,31 @@ fn try_write_markdown_url(
                         }
                     }
                 }
+                "searchfox.org" => {
+                    let is_moz_central = path_segments
+                        .next()
+                        .filter(|repo| repo == &"mozilla-central")
+                        .and_then(|_repo| path_segments.next())
+                        .map_or(false, |history| match history {
+                            "source" => true,
+                            "rev" => {
+                                let _rev_hash = path_segments.next();
+                                true
+                            }
+                            _ => false,
+                        });
+                    if is_moz_central {
+                        let file_path = path_segments.join_with('/');
+                        let line_range_probably = lazy_format!(|f| {
+                            if let Some(fragment) = url.fragment() {
+                                write!(f, "{fragment}")?;
+                            }
+                            Ok(())
+                        });
+                        write!(f, "[`{file_path}`:{line_range_probably}]({url})")?;
+                        return Ok(FancyMarkdownMatched::Yes);
+                    }
+                }
                 "treeherder.mozilla.org" => {
                     if let Some(("jobs",)) = path_segments.collect_tuple() {
                         let mut repo = None;

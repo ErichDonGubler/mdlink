@@ -178,54 +178,21 @@ fn try_write_markdown_url(
                         if crate_pkg_name.replace('-', "_") == crate_module_name {
                             log::debug!("ignoring version {ver:?}");
 
-                            let symbol_caps;
-                            let symbol = match path_segments.next_back() {
-                                Some("index.html" | "") | None => None,
-                                Some(symbol) => {
-                                    static SYMBOL_RE: OnceLock<regex::Regex> = OnceLock::new();
-                                    let symbol_re = SYMBOL_RE.get_or_init(|| {
-                                        regex::Regex::new(concat!(
-                                            "(constant|struct|fn|enum|trait|attr)",
-                                            r"\.",
-                                            r"(?P<ident>\w+)",
-                                            r"\.html"
-                                        ))
-                                        .unwrap()
-                                    });
-                                    symbol_caps = symbol_re.captures(symbol);
-                                    match symbol_caps.as_ref().map(|caps| &caps["ident"]) {
-                                        None => return Ok(FancyMarkdownMatched::No),
-                                        ident => ident,
-                                    }
+                            let mut symbol_caps = None;
+                            let mut fragment_caps = None;
+                            match extract_rust_symbol_path(
+                                crate_module_name,
+                                path_segments,
+                                url.fragment(),
+                                &mut symbol_caps,
+                                &mut fragment_caps,
+                            ) {
+                                Some(module_path) => {
+                                    write!(f, "[`{module_path}`]({url})")?;
+                                    return Ok(FancyMarkdownMatched::Yes);
                                 }
+                                None => return Ok(FancyMarkdownMatched::No),
                             };
-
-                            let fragment_caps;
-                            let fragment = match url.fragment() {
-                                None => None,
-                                Some(fragment) => {
-                                    static FRAGMENT_CAPS: OnceLock<regex::Regex> = OnceLock::new();
-                                    let fragment_re = FRAGMENT_CAPS.get_or_init(|| {
-                                        regex::Regex::new(concat!(
-                                            "(tymethod|method)",
-                                            r"\.",
-                                            r"(?P<ident>\w+)",
-                                        ))
-                                        .unwrap()
-                                    });
-                                    fragment_caps = fragment_re.captures(fragment);
-                                    fragment_caps.as_ref().map(|caps| &caps["ident"])
-                                }
-                            };
-
-                            let module_path = Some(crate_module_name)
-                                .into_iter()
-                                .chain(path_segments)
-                                .chain(symbol)
-                                .chain(fragment)
-                                .join_with("::");
-                            write!(f, "[`{module_path}`]({url})")?;
-                            return Ok(FancyMarkdownMatched::Yes);
                         }
                     }
                 }
@@ -298,4 +265,54 @@ fn render_bugzilla(url: &Url, bug_id: &str, mut f: impl fmt::Write) -> fmt::Resu
         }
     }
     write!(f, "[{prefix}{bug_id}{postfix}{comment_display}]({url})")
+}
+
+fn extract_rust_symbol_path<'a>(
+    crate_module_name: &'a str,
+    mut path_segments: impl Clone + DoubleEndedIterator + Iterator<Item = &'a str> + 'a,
+    fragment: Option<&'a str>,
+    symbol_caps: &'a mut Option<regex::Captures<'a>>,
+    fragment_caps: &'a mut Option<regex::Captures<'a>>,
+) -> Option<impl Clone + Display + 'a> {
+    let symbol = match path_segments.next_back() {
+        Some("index.html" | "") | None => None,
+        Some(symbol) => {
+            static SYMBOL_RE: OnceLock<regex::Regex> = OnceLock::new();
+            let symbol_re = SYMBOL_RE.get_or_init(|| {
+                regex::Regex::new(concat!(
+                    "(constant|struct|fn|enum|trait|attr)",
+                    r"\.",
+                    r"(?P<ident>\w+)",
+                    r"\.html"
+                ))
+                .unwrap()
+            });
+            *symbol_caps = symbol_re.captures(symbol);
+            match symbol_caps.as_ref().map(|caps| &caps["ident"]) {
+                None => return None,
+                ident => ident,
+            }
+        }
+    };
+
+    let fragment = match fragment {
+        None => None,
+        Some(fragment) => {
+            static FRAGMENT_CAPS: OnceLock<regex::Regex> = OnceLock::new();
+            let fragment_re = FRAGMENT_CAPS.get_or_init(|| {
+                regex::Regex::new(concat!("(tymethod|method)", r"\.", r"(?P<ident>\w+)",)).unwrap()
+            });
+            *fragment_caps = fragment_re.captures(fragment);
+            fragment_caps.as_ref().map(|caps| &caps["ident"])
+        }
+    };
+
+    Some(
+        Some(crate_module_name)
+            .into_iter()
+            .chain(path_segments)
+            .chain(symbol)
+            .chain(fragment)
+            .join_with("::"),
+    )
 }

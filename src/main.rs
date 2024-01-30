@@ -196,6 +196,29 @@ fn try_write_markdown_url(
                         }
                     }
                 }
+                "doc.rust-lang.org" => {
+                    if let Some((
+                        "stable" | "beta" | "nightly",
+                        crate_module_name @ ("core" | "alloc" | "std"),
+                    )) = path_segments.next_tuple()
+                    {
+                        let mut symbol_caps = None;
+                        let mut fragment_caps = None;
+                        match extract_rust_symbol_path(
+                            crate_module_name,
+                            path_segments,
+                            url.fragment(),
+                            &mut symbol_caps,
+                            &mut fragment_caps,
+                        ) {
+                            Some(module_path) => {
+                                write!(f, "[`{module_path}`]({url})")?;
+                                return Ok(FancyMarkdownMatched::Yes);
+                            }
+                            None => return Ok(FancyMarkdownMatched::No),
+                        };
+                    }
+                }
                 "searchfox.org" => {
                     let is_moz_central = path_segments
                         .next()

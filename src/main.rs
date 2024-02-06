@@ -197,10 +197,13 @@ fn try_write_markdown_url(
                     }
                 }
                 "doc.rust-lang.org" => {
-                    if let Some((
-                        "stable" | "beta" | "nightly",
-                        crate_module_name @ ("core" | "alloc" | "std"),
-                    )) = path_segments.next_tuple()
+                    if let Some(
+                        (
+                            "stable" | "beta" | "nightly",
+                            crate_module_name @ ("core" | "alloc" | "std"),
+                        )
+                        | (crate_module_name @ ("core" | "alloc" | "std"), _),
+                    ) = path_segments.next_tuple()
                     {
                         let mut symbol_caps = None;
                         let mut fragment_caps = None;

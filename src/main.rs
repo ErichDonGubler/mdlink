@@ -39,7 +39,7 @@ fn main() {
             "{}",
             lazy_format!(move |f| {
                 try_write_markdown_url(&url, &mut *f).and_then(|matched| match matched {
-                    FancyMarkdownMatched::No => write!(f, "{url}"),
+                    FancyMarkdownMatched::No => write!(f, "<{url}>"),
                     FancyMarkdownMatched::Yes => Ok(()),
                 })
             })

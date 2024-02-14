@@ -82,6 +82,10 @@ fn try_write_markdown_url(
             match host {
                 "github.com" => {
                     if let Some((org, repo)) = path_segments.next_tuple() {
+                        if path_segments.clone().next().is_none() {
+                            write!(f, "[`{org}/{repo}`]({url})")?;
+                            return Ok(FancyMarkdownMatched::Yes);
+                        }
                         if let Some(("issues" | "pull", issue_num)) =
                             path_segments.clone().next_tuple()
                         {

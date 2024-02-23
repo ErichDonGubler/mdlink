@@ -1,4 +1,8 @@
-use std::{fmt, sync::OnceLock};
+use std::{
+    collections::BTreeMap,
+    fmt::{self, Display},
+    sync::OnceLock,
+};
 
 use format::lazy_format;
 use itertools::Itertools;
@@ -9,8 +13,34 @@ use url::Url;
 use crate::{config::Layered, FancyMarkdownMatched};
 
 #[derive(Clone, Debug, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Config {}
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct Config {
+    // TODO: v2 idea: familiar orgs, single focal repo
+    #[serde(default)]
+    orgs: BTreeMap<String, OrgEntry>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct OrgEntry {
+    unmatched_repo_prefix: Option<RepoPrefix>,
+    #[serde(default)]
+    repos: BTreeMap<String, RepoEntry>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct RepoEntry {
+    prefix: Option<RepoPrefix>,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum RepoPrefix {
+    OrgAndRepo,
+    RepoOnly,
+    None,
+}
 
 pub(crate) fn try_write_markdown_url<'a>(
     config: Layered<&Config>,
@@ -18,16 +48,50 @@ pub(crate) fn try_write_markdown_url<'a>(
     mut path_segments: impl Iterator<Item = &'a str> + Clone,
     mut f: impl fmt::Write,
 ) -> Result<Option<FancyMarkdownMatched>, fmt::Error> {
-    let _ = config.map(|Config {}| ());
+    let orgs = config.map(|github| &github.orgs);
 
     if let Some((org, repo)) = path_segments.next_tuple() {
+        let prefix = {
+            let repo_entry = orgs
+                .clone()
+                .inwards()
+                .filter_map(|layer| layer.get(org))
+                .filter_map(|org_entry| org_entry.repos.get(repo))
+                .find_map(|repo| repo.prefix);
+            let fallback_org_prefix = || {
+                orgs.inwards()
+                    .filter_map(|layer| layer.get(org))
+                    .find_map(|org_entry| org_entry.unmatched_repo_prefix)
+            };
+            repo_entry
+                .or_else(fallback_org_prefix)
+                .unwrap_or(RepoPrefix::OrgAndRepo)
+        };
+
+        let backticked_org_and_repo = lazy_format!("`{org}/{repo}`");
+        let backticked_org_and_repo: &dyn Display = &backticked_org_and_repo;
+        let backticked_repo = lazy_format!("`{repo}`");
+        let backticked_repo: &dyn Display = &backticked_repo;
+
         if path_segments.clone().next().is_none() {
-            write!(f, "[`{org}/{repo}`]({url})")?;
+            let display = match prefix {
+                RepoPrefix::OrgAndRepo => backticked_org_and_repo,
+                // We're pointing to a page about the repo, so it doesn't make sense to omit the
+                // name.
+                RepoPrefix::RepoOnly | RepoPrefix::None => backticked_repo,
+            };
+            write!(f, "[{display}]({url})")?;
             return Ok(Some(FancyMarkdownMatched::Yes));
         }
 
+        let repo_prefix = match prefix {
+            RepoPrefix::OrgAndRepo => backticked_org_and_repo,
+            RepoPrefix::RepoOnly => backticked_repo,
+            RepoPrefix::None => &"",
+        };
+
         if let Some(("issues" | "pull", issue_num)) = path_segments.clone().next_tuple() {
-            write!(f, "[`{org}/{repo}`#{issue_num}]({url})")?;
+            write!(f, "[{repo_prefix}#{issue_num}]({url})")?;
             return Ok(Some(FancyMarkdownMatched::Yes));
         }
 
@@ -59,7 +123,7 @@ pub(crate) fn try_write_markdown_url<'a>(
                 });
                 write!(
                     f,
-                    "[`{org}/{repo}`:`{commitish}`:`{}`{}]({url})",
+                    "[{repo_prefix}:`{commitish}`:`{}`{}]({url})",
                     file_path_segments.join_with('/'),
                     lazy_format!(|f| {
                         match line_num_spec {

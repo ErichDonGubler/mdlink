@@ -6,14 +6,19 @@ use std::{
 
 use arboard::Clipboard;
 use clap::Parser;
+use config::{Config, ConfigLayer, Layered};
 use itertools::Itertools;
 use joinery::JoinableIterator;
 use lazy_format::make_lazy_format;
 use url::Url;
 
+mod config;
+
 #[derive(Debug, Parser)]
 #[clap(about, author, version)]
 pub struct Cli {
+    #[clap(long)]
+    profile: Option<String>,
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
@@ -28,7 +33,10 @@ enum Subcommand {
 fn main() {
     env_logger::init();
 
-    let Cli { subcommand } = Cli::parse();
+    let Cli {
+        profile,
+        subcommand,
+    } = Cli::parse();
 
     let buf;
     let urls: Box<dyn Iterator<Item = Url>> = match subcommand {
@@ -43,13 +51,19 @@ fn main() {
         Subcommand::Args { urls } => Box::new(urls.into_iter()),
     };
 
+    let config = Config::read_from_project_dir().expect("failed to read config. file");
+    let config = config.layers_from_profile(profile.as_deref()).unwrap();
+    let config = &config;
+
     for url in urls {
         println!(
             "{}",
             make_lazy_format!(|f| {
-                try_write_markdown_url(&url, &mut *f).and_then(|matched| match matched {
-                    FancyMarkdownMatched::No => write!(f, "<{url}>"),
-                    FancyMarkdownMatched::Yes => Ok(()),
+                try_write_markdown_url(config.clone(), &url, &mut *f).and_then(|matched| {
+                    match matched {
+                        FancyMarkdownMatched::No => write!(f, "<{url}>"),
+                        FancyMarkdownMatched::Yes => Ok(()),
+                    }
                 })
             })
         )
@@ -80,6 +94,7 @@ enum FancyMarkdownMatched {
 }
 
 fn try_write_markdown_url(
+    config: Layered<&ConfigLayer>,
     url: &Url,
     mut f: impl fmt::Write,
 ) -> Result<FancyMarkdownMatched, fmt::Error> {

@@ -12,7 +12,13 @@ use joinery::JoinableIterator;
 use url::Url;
 
 #[derive(Debug, Parser)]
-enum Cli {
+pub struct Cli {
+    #[clap(subcommand)]
+    subcommand: Subcommand,
+}
+
+#[derive(Debug, Parser)]
+enum Subcommand {
     Clipboard,
     Stdin,
     Args { urls: Vec<Url> },
@@ -21,17 +27,19 @@ enum Cli {
 fn main() {
     env_logger::init();
 
+    let Cli { subcommand } = Cli::parse();
+
     let buf;
-    let urls: Box<dyn Iterator<Item = Url>> = match Cli::parse() {
-        Cli::Clipboard => {
+    let urls: Box<dyn Iterator<Item = Url>> = match subcommand {
+        Subcommand::Clipboard => {
             buf = Clipboard::new().unwrap().get_text().unwrap();
             Box::new(line_iter(&buf))
         }
-        Cli::Stdin => {
+        Subcommand::Stdin => {
             buf = io::read_to_string(stdin().lock()).expect("failed to read `stdin`");
             Box::new(line_iter(&buf))
         }
-        Cli::Args { urls } => Box::new(urls.into_iter()),
+        Subcommand::Args { urls } => Box::new(urls.into_iter()),
     };
 
     for url in urls {

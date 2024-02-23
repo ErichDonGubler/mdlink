@@ -89,7 +89,10 @@ pub enum ConfigReadError {
 /// A single layer of configuration supported by a [`Config`].
 #[derive(Default, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ConfigLayer {}
+pub struct ConfigLayer {
+    #[serde(default)]
+    pub github: crate::github::Config,
+}
 
 /// Layers of configuration applicable to a single profile selection. Can be created from
 /// [`Config::layers_from_profile`].

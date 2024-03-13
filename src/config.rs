@@ -9,6 +9,8 @@ use std::{
 use serde::Deserialize;
 use snafu::{OptionExt, ResultExt, Snafu};
 
+mod kdl;
+
 /// Configuration to be passed to [`crate::try_write_markdown_url`].
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -30,7 +32,7 @@ impl Config {
             config_dir.display()
         );
         fs::create_dir_all(config_dir).context(CreateDirectorySnafu)?;
-        let config_path = config_dir.join("config.toml");
+        let config_path = config_dir.join("config.kdl");
         log::trace!(
             "ensuring that config. file is created at path {}",
             config_path.display()
@@ -49,7 +51,15 @@ impl Config {
                 .context(ReadFileSnafu)?;
             buf
         };
-        toml::from_str(&config_file_contents).context(DeserializeFileContentsAsTomlSnafu)
+        // TODO: file issue in `knuffel` upstream about this?
+        let kdl_config = knuffel::parse::<kdl::Config>(
+            config_path
+                .to_str()
+                .expect("internal error: cannot treat config. file path as UTF-8"),
+            &config_file_contents,
+        );
+        let _ = dbg!(kdl_config);
+        todo!("convert KDL repr. to validated `Config` repr.");
     }
 
     /// Fetch a field from this configuration's layers, using `f` as an extractor.
@@ -82,8 +92,6 @@ pub enum ConfigReadError {
     OpenFile { source: io::Error },
     #[snafu(display("failed to read config. file"))]
     ReadFile { source: io::Error },
-    #[snafu(display("failed to deserialize config. file contents as TOML"))]
-    DeserializeFileContentsAsToml { source: toml::de::Error },
 }
 
 /// A single layer of configuration supported by a [`Config`].

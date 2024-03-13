@@ -14,6 +14,7 @@ use url::Url;
 
 mod config;
 mod github;
+mod template;
 
 #[derive(Debug, Parser)]
 #[clap(about, author, version)]

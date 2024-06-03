@@ -338,7 +338,12 @@ fn extract_rust_symbol_path<'a>(
         Some(fragment) => {
             static FRAGMENT_CAPS: OnceLock<regex::Regex> = OnceLock::new();
             let fragment_re = FRAGMENT_CAPS.get_or_init(|| {
-                regex::Regex::new(concat!("(tymethod|method)", r"\.", r"(?P<ident>\w+)",)).unwrap()
+                regex::Regex::new(concat!(
+                    "(tymethod|method|associatedconstant)",
+                    r"\.",
+                    r"(?P<ident>\w+)"
+                ))
+                .unwrap()
             });
             *fragment_caps = fragment_re.captures(fragment);
             fragment_caps.as_ref().map(|caps| &caps["ident"])

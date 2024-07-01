@@ -146,6 +146,20 @@ fn try_write_markdown_url(
                                     )?;
                                     return Ok(FancyMarkdownMatched::Yes);
                                 }
+                                Some(("commit", commitish)) => {
+                                    if path_segments.clone().next().is_none() {
+                                        write!(f, "[`{org}/{repo}`:`{commitish}`]({url})")?;
+                                        return Ok(FancyMarkdownMatched::Yes);
+                                    }
+
+                                    let file_path_segments = path_segments;
+                                    write!(
+                                        f,
+                                        "[`{org}/{repo}`:`{commitish}`:`{}`]({url})",
+                                        file_path_segments.join_with('/'),
+                                    )?;
+                                    return Ok(FancyMarkdownMatched::Yes);
+                                }
                                 _ => (),
                             }
                         }

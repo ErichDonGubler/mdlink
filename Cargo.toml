@@ -2,10 +2,12 @@
 name = "mdlink"
 description = "Auto-convert HTTP links for your favorite services into nice Markdown links"
 authors = ["Erich Gubler <erichdongubler@gmail.com>"]
-version = "0.2.13"
+version = "0.2.13+post-release"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/ErichDonGubler/mdlink"
+
+[package.metadata.release]
 
 [package.metadata.wix]
 upgrade-guid = "4BAD2368-4ED6-483A-AE26-1120345654C0"

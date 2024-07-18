@@ -327,7 +327,7 @@ fn render_bugzilla(url: &Url, bug_id: &str, mut f: impl fmt::Write) -> fmt::Resu
 
 fn extract_rust_symbol_path<'a>(
     crate_module_name: &'a str,
-    mut path_segments: impl Clone + DoubleEndedIterator + Iterator<Item = &'a str> + 'a,
+    mut path_segments: impl Clone + DoubleEndedIterator<Item = &'a str> + 'a,
     fragment: Option<&'a str>,
     symbol_caps: &'a mut Option<regex::Captures<'a>>,
     fragment_caps: &'a mut Option<regex::Captures<'a>>,

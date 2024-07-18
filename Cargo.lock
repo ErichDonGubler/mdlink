@@ -341,7 +341,7 @@ dependencies = [
 
 [[package]]
 name = "mdlink"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "arboard",
  "clap",

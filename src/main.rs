@@ -6,9 +6,9 @@ use std::{
 
 use arboard::Clipboard;
 use clap::Parser;
-use format::lazy_format;
 use itertools::Itertools;
 use joinery::JoinableIterator;
+use lazy_format::make_lazy_format;
 use url::Url;
 
 #[derive(Debug, Parser)]
@@ -38,7 +38,7 @@ fn main() {
     for url in urls {
         println!(
             "{}",
-            lazy_format!(move |f| {
+            make_lazy_format!(|f| {
                 try_write_markdown_url(&url, &mut *f).and_then(|matched| match matched {
                     FancyMarkdownMatched::No => write!(f, "<{url}>"),
                     FancyMarkdownMatched::Yes => Ok(()),
@@ -132,7 +132,7 @@ fn try_write_markdown_url(
                                         f,
                                         "[`{org}/{repo}`:`{commitish}`:`{}`{}]({url})",
                                         file_path_segments.join_with('/'),
-                                        lazy_format!(|f| {
+                                        make_lazy_format!(|f| {
                                             match line_num_spec {
                                                 Some(LineNumberSpec::Single(num)) => {
                                                     write!(f, ":{num}")
@@ -269,7 +269,7 @@ fn try_write_markdown_url(
                         });
                     if is_moz_central {
                         let file_path = path_segments.join_with('/');
-                        let line_range_probably = lazy_format!(|f| {
+                        let line_range_probably = make_lazy_format!(|f| {
                             if let Some(fragment) = url.fragment() {
                                 write!(f, "{fragment}")?;
                             }
@@ -318,7 +318,7 @@ fn render_bugzilla(url: &Url, bug_id: &str, mut f: impl fmt::Write) -> fmt::Resu
 
     if let Some(fragment) = url.fragment() {
         if let Some(("", comment_id)) = fragment.split_once('c') {
-            comment = lazy_format!(move |f| write!(f, ", comment {comment_id}"));
+            comment = make_lazy_format!(|f| write!(f, ", comment {comment_id}"));
             comment_display = &comment;
         }
     }

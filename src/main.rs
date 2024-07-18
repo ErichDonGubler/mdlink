@@ -338,7 +338,7 @@ fn extract_rust_symbol_path<'a>(
             static SYMBOL_RE: OnceLock<regex::Regex> = OnceLock::new();
             let symbol_re = SYMBOL_RE.get_or_init(|| {
                 regex::Regex::new(concat!(
-                    "(constant|struct|fn|enum|trait|attr)",
+                    "(?P<symbol_kind>constant|struct|fn|enum|trait|attr|primitive)",
                     r"\.",
                     r"(?P<ident>\w+)",
                     r"\.html"
@@ -346,9 +346,12 @@ fn extract_rust_symbol_path<'a>(
                 .unwrap()
             });
             *symbol_caps = symbol_re.captures(symbol);
-            match symbol_caps.as_ref().map(|caps| &caps["ident"]) {
+            match symbol_caps
+                .as_ref()
+                .map(|caps| (&caps["symbol_kind"], &caps["ident"]))
+            {
                 None => return None,
-                ident => ident,
+                some => some,
             }
         }
     };
@@ -370,11 +373,20 @@ fn extract_rust_symbol_path<'a>(
         }
     };
 
+    let mut symbol_name = None;
+    let mut crate_module_name = Some(crate_module_name);
+    if let Some((kind, name)) = symbol {
+        symbol_name = Some(name);
+        if kind == "primitive" {
+            crate_module_name = None
+        }
+    }
+
     Some(
-        Some(crate_module_name)
+        crate_module_name
             .into_iter()
             .chain(path_segments)
-            .chain(symbol)
+            .chain(symbol_name)
             .chain(fragment)
             .join_with("::"),
     )

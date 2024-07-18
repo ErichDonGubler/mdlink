@@ -348,7 +348,7 @@ fn extract_rust_symbol_path<'a>(
             *symbol_caps = symbol_re.captures(symbol);
             match symbol_caps.as_ref().map(|caps| &caps["ident"]) {
                 None => return None,
-                ident => ident,
+                some => some,
             }
         }
     };

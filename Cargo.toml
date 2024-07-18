@@ -10,6 +10,8 @@ repository = "https://github.com/ErichDonGubler/mdlink"
 [package.metadata.wix]
 upgrade-guid = "4BAD2368-4ED6-483A-AE26-1120345654C0"
 path-guid = "51E0F7DA-62A6-43CA-9F0E-A3C6F212B00F"
+license = false
+eula = false
 
 [dependencies]
 arboard = { version = "3.2.1", default-features = false }
@@ -29,8 +31,17 @@ lto = "thin"
 
 # Config for 'cargo dist'
 [workspace.metadata.dist]
-cargo-dist-version = "0.3.1"
-ci = ["github"]
-installers = ["shell", "powershell"]
-targets = ["x86_64-unknown-linux-gnu", "aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-pc-windows-msvc"]
+# The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.19.1"
+# CI backends to support
+ci = "github"
+# The installers to generate for each app
+installers = ["shell", "powershell", "msi"]
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+# Publish jobs to run in CI
 pr-run-mode = "plan"
+# Path that installers should place binaries in
+install-path = "CARGO_HOME"
+# Whether to install an updater program
+install-updater = false

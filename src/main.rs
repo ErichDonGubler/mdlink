@@ -338,7 +338,7 @@ fn extract_rust_symbol_path<'a>(
             static SYMBOL_RE: OnceLock<regex::Regex> = OnceLock::new();
             let symbol_re = SYMBOL_RE.get_or_init(|| {
                 regex::Regex::new(concat!(
-                    "(?P<symbol_kind>constant|struct|fn|enum|trait|attr|primitive)",
+                    "(?P<symbol_kind>constant|struct|fn|enum|trait|attr|primitive|type)",
                     r"\.",
                     r"(?P<ident>\w+)",
                     r"\.html"

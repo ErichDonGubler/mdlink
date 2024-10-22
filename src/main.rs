@@ -264,9 +264,9 @@ fn try_write_markdown_url(
                             if let Some(search_term) =
                                 url.fragment().and_then(|f| f.strip_prefix('/'))
                             {
-                                write!(f, "[`clippy::{search_term}` in `{release_stage}`]")?;
+                                write!(f, "[`clippy::{search_term}` in `{release_stage}`]({url})")?;
                             } else {
-                                write!(f, "`clippy` lints in `{release_stage}`")?;
+                                write!(f, "[`clippy` lints in `{release_stage}`]({url})")?;
                             }
                             return Ok(FancyMarkdownMatched::Yes);
                         }

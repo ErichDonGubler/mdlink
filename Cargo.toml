@@ -2,7 +2,7 @@
 name = "mdlink"
 description = "Auto-convert HTTP links for your favorite services into nice Markdown links"
 authors = ["Erich Gubler <erichdongubler@gmail.com>"]
-version = "0.2.5"
+version = "0.2.6"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/ErichDonGubler/mdlink"

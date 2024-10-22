@@ -254,6 +254,24 @@ fn try_write_markdown_url(
                         };
                     }
                 }
+                "rust-lang.github.io" => {
+                    if let Some(("rust-clippy", release_stage, "index.html")) =
+                        path_segments.collect_tuple()
+                    {
+                        if matches!(release_stage, "stable" | "beta" | "nightly") {
+                            // NOTE: This may be a valid lint name, and we hope so, but we can't
+                            // readily distinguish.
+                            if let Some(search_term) =
+                                url.fragment().and_then(|f| f.strip_prefix('/'))
+                            {
+                                write!(f, "[`clippy::{search_term}` in `{release_stage}`]")?;
+                            } else {
+                                write!(f, "`clippy` lints in `{release_stage}`")?;
+                            }
+                            return Ok(FancyMarkdownMatched::Yes);
+                        }
+                    }
+                }
                 "searchfox.org" => {
                     let is_moz_central = path_segments
                         .next()

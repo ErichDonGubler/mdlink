@@ -203,6 +203,14 @@ fn try_write_markdown_url(
                         }
                     }
                 }
+                "crates.io" => {
+                    if let Some(("crates", crate_name, crate_version)) =
+                        path_segments.collect_tuple()
+                    {
+                        write!(f, "[`{crate_name}` v{crate_version}]({url})")?;
+                        return Ok(FancyMarkdownMatched::Yes);
+                    }
+                }
                 "docs.rs" => {
                     if let Some((crate_pkg_name, ver, crate_module_name)) =
                         path_segments.next_tuple()

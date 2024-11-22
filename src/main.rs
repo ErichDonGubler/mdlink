@@ -324,6 +324,16 @@ fn try_write_markdown_url(
                         }
                     }
                 }
+                "gpuweb.github.io" => {
+                    if let Some(("cts", "standalone", "")) = path_segments.collect_tuple() {
+                        if let Some(test_path) =
+                            url.query_pairs().find_map(|(k, v)| (k == "q").then_some(v))
+                        {
+                            write!(f, "[`{test_path}`]({url})")?;
+                            return Ok(FancyMarkdownMatched::Yes);
+                        }
+                    }
+                }
                 _ => (),
             }
         }

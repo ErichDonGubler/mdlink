@@ -160,6 +160,37 @@ fn try_write_markdown_url(
                                     )?;
                                     return Ok(FancyMarkdownMatched::Yes);
                                 }
+                                Some(("releases", "tag")) => {
+                                    if let Some(tag) = path_segments.next() {
+                                        match (path_segments.next(), path_segments.next()) {
+                                            (Some(""), None) | (None, ..) => {
+                                                static COMPONENT_VERSION_RE: OnceLock<
+                                                    regex::Regex,
+                                                > = OnceLock::new();
+
+                                                if let Some(captures) = COMPONENT_VERSION_RE
+                                                    .get_or_init(|| {
+                                                        regex::Regex::new(concat!(
+                                                            r"(?P<component>.+)",
+                                                            "-",
+                                                            r"(?P<version>v\d+(:?\.\d+){0,2})"
+                                                        ))
+                                                        .unwrap()
+                                                    })
+                                                    .captures(tag)
+                                                {
+                                                    let component = &captures["component"];
+                                                    let version = &captures["version"];
+                                                    write!(f, "[`{component}` {version}]({url})")?;
+                                                } else {
+                                                    write!(f, "[`{tag}` tag release]({url})")?;
+                                                }
+                                                return Ok(FancyMarkdownMatched::Yes);
+                                            }
+                                            _ => (),
+                                        }
+                                    }
+                                }
                                 _ => (),
                             }
                         }

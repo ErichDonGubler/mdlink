@@ -227,7 +227,7 @@ fn try_write_markdown_url(
                     } else if let Some((id,)) = path_segments.collect_tuple() {
                         if id
                             .strip_prefix('D')
-                            .map_or(false, |rest| rest.chars().all(|c| c.is_ascii_digit()))
+                            .is_some_and(|rest| rest.chars().all(|c| c.is_ascii_digit()))
                         {
                             write!(f, "[{id}]({url})")?;
                             return Ok(FancyMarkdownMatched::Yes);
@@ -316,7 +316,7 @@ fn try_write_markdown_url(
                         .next()
                         .filter(|repo| repo == &"mozilla-central")
                         .and_then(|_repo| path_segments.next())
-                        .map_or(false, |history| match history {
+                        .is_some_and(|history| match history {
                             "source" => true,
                             "rev" => {
                                 let _rev_hash = path_segments.next();

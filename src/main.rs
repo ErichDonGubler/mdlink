@@ -298,12 +298,16 @@ fn try_write_markdown_url(
                         path_segments.collect_tuple()
                     {
                         if matches!(release_stage, "stable" | "beta" | "nightly") {
-                            // NOTE: This may be a valid lint name, and we hope so, but we can't
-                            // readily distinguish.
-                            if let Some(search_term) =
-                                url.fragment().and_then(|f| f.strip_prefix('/'))
-                            {
-                                write!(f, "[`clippy::{search_term}` in `{release_stage}`]({url})")?;
+                            if let Some(term) = url.fragment() {
+                                if let Some(term) = term.strip_prefix('/') {
+                                    write!(f, "[search for `{term}` in `{release_stage}`]({url})")?;
+                                } else {
+                                    let lint_name = term;
+                                    write!(
+                                        f,
+                                        "[`clippy::{lint_name}` in `{release_stage}`]({url})"
+                                    )?;
+                                }
                             } else {
                                 write!(f, "[`clippy` lints in `{release_stage}`]({url})")?;
                             }

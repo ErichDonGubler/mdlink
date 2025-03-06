@@ -1,0 +1,24 @@
+mod github;
+
+pub fn main(args) {
+	let mdlink::ScriptArgs { url } = args;
+
+	let rendered = match url.scheme() {
+		"http" => handle_http_link(url),
+		"https" => handle_http_link(url),
+		_ => None,
+	};
+
+	if let Some(rendered) = rendered {
+		format!("[{}]({})", rendered, url)
+	} else {
+		format!("<{}>", url)
+	}
+}
+
+pub fn handle_http_link(url) {
+	url.host().and_then(|host| match host {
+		"github.com" => github::prettify(url, "blarg"),
+		_ => None
+	})
+}

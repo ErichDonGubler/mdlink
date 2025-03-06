@@ -1,0 +1,78 @@
+struct Config {
+	canonical_repos,
+	profile_skips,
+}
+
+const CONFIG = Config {
+	canonical_repos: #{
+		"gfx-rs": ["wgpu"],
+	},
+	profile_skips: #{
+		"gfx-rs": #{
+			"skip": ["wgpu"],
+			"repos": #{
+				"wgpu": ["wgpu-native"],
+			},
+		},
+	},
+};
+
+pub fn prettify(url, profile) {
+	let config = CONFIG;
+	url.path_segments().and_then(|path_segments| match path_segments {
+		[org, repo] => Some(fmt_org_and_repo(org, repo, "", config)),
+		[org, repo, "issues", ..] => issue_or_pr(org, repo, path_segments.iter().skip(3), config),
+		[org, repo, "pull", ..] => issue_or_pr(org, repo, path_segments.iter().skip(3), config),
+		[org, repo, "blob", ..] => match path_segments[4..] {
+			// TODO: file paths, probably needs regex parsing?
+			[commitish, ..] => Some(format!(
+				"`{}/{}`:`{}`",
+				org,
+				repo,
+				commitish
+			)),
+			[] => None
+		},
+		[org, repo, "commit", commitish, ..] => match path_segments[4..] {
+			// TODO: file paths, probably needs regex parsing?
+			[commitish, ..] => Some(format!(
+				"`{}/{}`:`{}`",
+				org,
+				repo,
+				commitish
+			)),
+			[] => None
+		}
+		_ => None,
+		// if let Some(org) = path_segments.next() {
+		// 	if let Some(repo) = path_segments.next() {
+		// 		match path_segments.next() {
+		// 			Some("commit") => match path_segments.next() {
+		// 				Some(commitish) => {
+		// 					match path_segments.next() {
+		// 						None => return Some(format!("`{}/{}`:`{}`", org, repo, commitish))
+		// 							// TODO: file path segments!
+		// 					}
+		// 				}
+		// 			}
+		// 			Some("releases") => match path_segments.next() {
+		// 				Some("tag") => {
+		// 					// TODO: tag releases!
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
+	})
+}
+
+fn fmt_org_and_repo(org, repo, suffix, config) {
+	// TODO: respect config
+	format!("`{}/{}`{}", org, repo, suffix)
+}
+
+fn issue_or_pr(org, repo, path_segments, config) {
+	path_segments.next().map(|num| {
+		format!("{}#{}", fmt_org_and_repo(org, repo, "", config), num)
+	})
+}

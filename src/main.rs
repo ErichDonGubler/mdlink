@@ -369,6 +369,13 @@ fn try_write_markdown_url(
                         }
                     }
                 }
+                "hg.mozilla.org" | "hg-edge.mozilla.org" => {
+                    // https://hg-edge.mozilla.org/mozilla-central/rev/f956d7e03a822a09fbb84e9b474db8e0167095f1
+                    if let Some((repo, "rev", hash)) = path_segments.collect_tuple() {
+                        write!(f, "[`{repo}`:`{hash}`]({url})")?;
+                        return Ok(FancyMarkdownMatched::Yes);
+                    }
+                }
                 _ => (),
             }
         }

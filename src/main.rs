@@ -318,7 +318,7 @@ fn try_write_markdown_url(
                 "searchfox.org" => {
                     let is_moz_central = path_segments
                         .next()
-                        .filter(|repo| repo == &"mozilla-central")
+                        .filter(|repo| repo == &"mozilla-central" || repo == &"firefox-main")
                         .and_then(|_repo| path_segments.next())
                         .is_some_and(|history| match history {
                             "source" => true,

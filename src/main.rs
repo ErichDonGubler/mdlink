@@ -6,14 +6,27 @@ use std::{
 
 use arboard::Clipboard;
 use clap::Parser;
+use config::{Config, ConfigLayer, Layered};
 use itertools::Itertools;
 use joinery::JoinableIterator;
 use lazy_format::make_lazy_format;
 use url::Url;
 
+mod config;
+mod github;
+mod template;
+
 #[derive(Debug, Parser)]
 #[clap(about, author, version)]
-enum Cli {
+pub struct Cli {
+    #[clap(long)]
+    profile: Option<String>,
+    #[clap(subcommand)]
+    subcommand: Subcommand,
+}
+
+#[derive(Debug, Parser)]
+enum Subcommand {
     Clipboard,
     Stdin,
     Args { urls: Vec<Url> },
@@ -22,26 +35,37 @@ enum Cli {
 fn main() {
     env_logger::init();
 
+    let Cli {
+        profile,
+        subcommand,
+    } = Cli::parse();
+
     let buf;
-    let urls: Box<dyn Iterator<Item = Url>> = match Cli::parse() {
-        Cli::Clipboard => {
+    let urls: Box<dyn Iterator<Item = Url>> = match subcommand {
+        Subcommand::Clipboard => {
             buf = Clipboard::new().unwrap().get_text().unwrap();
             Box::new(line_iter(&buf))
         }
-        Cli::Stdin => {
+        Subcommand::Stdin => {
             buf = io::read_to_string(stdin().lock()).expect("failed to read `stdin`");
             Box::new(line_iter(&buf))
         }
-        Cli::Args { urls } => Box::new(urls.into_iter()),
+        Subcommand::Args { urls } => Box::new(urls.into_iter()),
     };
+
+    let config = Config::read_from_project_dir().expect("failed to read config. file");
+    let config = config.layers_from_profile(profile.as_deref()).unwrap();
+    let config = &config;
 
     for url in urls {
         println!(
             "{}",
             make_lazy_format!(|f| {
-                try_write_markdown_url(&url, &mut *f).and_then(|matched| match matched {
-                    FancyMarkdownMatched::No => write!(f, "<{url}>"),
-                    FancyMarkdownMatched::Yes => Ok(()),
+                try_write_markdown_url(config.clone(), &url, &mut *f).and_then(|matched| {
+                    match matched {
+                        FancyMarkdownMatched::No => write!(f, "<{url}>"),
+                        FancyMarkdownMatched::Yes => Ok(()),
+                    }
                 })
             })
         )
@@ -72,6 +96,7 @@ enum FancyMarkdownMatched {
 }
 
 fn try_write_markdown_url(
+    config: Layered<&ConfigLayer>,
     url: &Url,
     mut f: impl fmt::Write,
 ) -> Result<FancyMarkdownMatched, fmt::Error> {
@@ -82,118 +107,15 @@ fn try_write_markdown_url(
                 .expect("got URL with host but no path segments iterator (!?)");
             match host {
                 "github.com" => {
-                    if let Some((org, repo)) = path_segments.next_tuple() {
-                        if path_segments.clone().next().is_none() {
-                            write!(f, "[`{org}/{repo}`]({url})")?;
-                            return Ok(FancyMarkdownMatched::Yes);
-                        }
-                        if let Some(("issues" | "pull", issue_num)) =
-                            path_segments.clone().next_tuple()
-                        {
-                            write!(f, "[`{org}/{repo}`#{issue_num}]({url})")?;
-                            return Ok(FancyMarkdownMatched::Yes);
-                        }
-
-                        {
-                            let mut path_segments = path_segments.clone();
-                            match path_segments.next_tuple() {
-                                Some(("blob", commitish)) => {
-                                    enum LineNumberSpec<'a> {
-                                        Single(&'a str),
-                                        Range { start: &'a str, end: &'a str },
-                                    }
-                                    let file_path_segments = path_segments;
-                                    let line_num_spec = url.fragment().and_then(|frag| {
-                                        static LINE_NUM_SPEC_RE: OnceLock<regex::Regex> =
-                                            OnceLock::new();
-                                        let line_num_spec_re = LINE_NUM_SPEC_RE.get_or_init(|| {
-                                            regex::Regex::new(concat!(
-                                                r#"L(?P<start>\d+)"#,
-                                                r#"(:?-L(?P<end>\d+))?"#,
-                                            ))
-                                            .unwrap()
-                                        });
-                                        line_num_spec_re.captures(frag).map(|caps| {
-                                            let start = caps
-                                                .name("start")
-                                                .map(|m| m.as_str())
-                                                .expect(concat!(
-                                                    "matched line number spec. regex, ",
-                                                    "but unconditional `start` capture not found"
-                                                ));
-
-                                            caps.name("end")
-                                                .map(|m| m.as_str())
-                                                .map(|end| LineNumberSpec::Range { start, end })
-                                                .unwrap_or(LineNumberSpec::Single(start))
-                                        })
-                                    });
-                                    write!(
-                                        f,
-                                        "[`{org}/{repo}`:`{commitish}`:`{}`{}]({url})",
-                                        file_path_segments.join_with('/'),
-                                        make_lazy_format!(|f| {
-                                            match line_num_spec {
-                                                Some(LineNumberSpec::Single(num)) => {
-                                                    write!(f, ":{num}")
-                                                }
-                                                Some(LineNumberSpec::Range { start, end }) => {
-                                                    write!(f, ":{start}-{end}")
-                                                }
-                                                None => Ok(()),
-                                            }
-                                        })
-                                    )?;
-                                    return Ok(FancyMarkdownMatched::Yes);
-                                }
-                                Some(("commit", commitish)) => {
-                                    if path_segments.clone().next().is_none() {
-                                        write!(f, "[`{org}/{repo}`:`{commitish}`]({url})")?;
-                                        return Ok(FancyMarkdownMatched::Yes);
-                                    }
-
-                                    let file_path_segments = path_segments;
-                                    write!(
-                                        f,
-                                        "[`{org}/{repo}`:`{commitish}`:`{}`]({url})",
-                                        file_path_segments.join_with('/'),
-                                    )?;
-                                    return Ok(FancyMarkdownMatched::Yes);
-                                }
-                                Some(("releases", "tag")) => {
-                                    if let Some(tag) = path_segments.next() {
-                                        match (path_segments.next(), path_segments.next()) {
-                                            (Some(""), None) | (None, ..) => {
-                                                static COMPONENT_VERSION_RE: OnceLock<
-                                                    regex::Regex,
-                                                > = OnceLock::new();
-
-                                                if let Some(captures) = COMPONENT_VERSION_RE
-                                                    .get_or_init(|| {
-                                                        regex::Regex::new(concat!(
-                                                            r"(?P<component>.+)",
-                                                            "-",
-                                                            r"(?P<version>v\d+(:?\.\d+){0,2})"
-                                                        ))
-                                                        .unwrap()
-                                                    })
-                                                    .captures(tag)
-                                                {
-                                                    let component = &captures["component"];
-                                                    let version = &captures["version"];
-                                                    write!(f, "[`{component}` {version}]({url})")?;
-                                                } else {
-                                                    write!(f, "[`{tag}` tag release]({url})")?;
-                                                }
-                                                return Ok(FancyMarkdownMatched::Yes);
-                                            }
-                                            _ => (),
-                                        }
-                                    }
-                                }
-                                _ => (),
-                            }
-                        }
+                    if let Some(res) = github::try_write_markdown_url(
+                        config.clone().map(|layer| &layer.github),
+                        url,
+                        path_segments,
+                        f,
+                    )
+                    .transpose()
+                    {
+                        return res;
                     }
                 }
                 "bugzil.la" => {

@@ -376,6 +376,14 @@ fn try_write_markdown_url(
                         return Ok(FancyMarkdownMatched::Yes);
                     }
                 }
+                "rustsec.org" => {
+                    if let Some(("advisories", advisory_page)) = path_segments.collect_tuple() {
+                        if let Some(advisory_id) = advisory_page.strip_suffix(".html") {
+                            write!(f, "[{advisory_id}]({url})")?;
+                            return Ok(FancyMarkdownMatched::Yes);
+                        }
+                    }
+                }
                 _ => (),
             }
         }

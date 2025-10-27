@@ -92,6 +92,8 @@ pub enum ConfigReadError {
 pub struct ConfigLayer {
     #[serde(default)]
     pub github: crate::github::Config,
+    #[serde(default)]
+    pub gitlab: crate::gitlab::Config,
 }
 
 /// Layers of configuration applicable to a single profile selection. Can be created from

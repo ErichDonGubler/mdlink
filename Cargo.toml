@@ -16,12 +16,18 @@ eula = false
 [dependencies]
 arboard = { version = "3.2.1", default-features = false }
 clap = { version = "4.4.6", features = ["derive"] }
+directories = "5.0.1"
 env_logger = "0.10.0"
 lazy_format = "2.0.3"
 itertools = "0.11.0"
 joinery = "3.1.0"
+knuffel = "3.2.0"
 log = "0.4.20"
+miette = "7.2.0"
 regex = "1.10.2"
+serde = { version = "1.0.197", features = ["derive"] }
+snafu = "0.8.0"
+toml = "0.8.10"
 url = "2.5.2"
 
 # The profile that 'cargo dist' will build with

@@ -14,9 +14,11 @@ license = false
 eula = false
 
 [dependencies]
-arboard = { version = "3.2.1", default-features = false }
+arboard = { version = "3.6.1", default-features = false, features = [
+    "wayland-data-control",
+] }
 clap = { version = "4.4.6", features = ["derive"] }
-env_logger = "0.10.0"
+env_logger = "0.11"
 lazy_format = "2.0.3"
 itertools = "0.11.0"
 joinery = "3.1.0"
